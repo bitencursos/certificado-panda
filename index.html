@@ -132,17 +132,20 @@
     font-family: "Ma Shan Zheng", "KaiTi", "STKaiti", "Microsoft YaHei", serif;
     font-size: 6mm; letter-spacing: .8mm; color: #9a1f18;
   }
-  .cert .c-date { position: absolute; top: 155.5mm; left: 62mm; right: 40mm; text-align: center; font-size: 6.4mm; }
-  .cert .c-sign {
-    position: absolute; top: 166.5mm; left: 62mm; right: 36mm;
-    display: flex; justify-content: center; align-items: flex-end; gap: 3mm;
-    font-size: 6.1mm; white-space: nowrap;
+  .cert .c-date { position: absolute; top: 155.5mm; left: 58mm; right: 58mm; text-align: center; font-size: 6.4mm; }
+  .cert .campo-branco {
+    display: inline-block; width: 80mm; height: 1em; vertical-align: -.2em;
+    border-bottom: .3mm solid #2a2420;
   }
-  .cert .c-sign-line { position: relative; display: inline-block; width: 64mm; height: 10mm; border-bottom: .35mm solid #2a2420; }
-  .cert .c-sign-img { position: absolute; left: 50%; bottom: .6mm; transform: translateX(-50%); max-height: 13mm; max-width: 62mm; }
+  .cert .c-sign {
+    position: absolute; top: 164mm; left: 58mm; right: 58mm;
+    display: flex; flex-direction: column; align-items: center;
+    white-space: nowrap;
+  }
+  .cert .c-sign-line { position: relative; display: block; width: 72mm; height: 11mm; border-bottom: .35mm solid #2a2420; }
+  .cert .c-sign-img { position: absolute; left: 50%; bottom: .6mm; transform: translateX(-50%); max-height: 13mm; max-width: 70mm; }
   .cert .c-sign-img:not([src]), .cert .c-sign-img[src=""] { display: none; }
-  .cert .c-sign-name { position: absolute; top: 100%; left: -10mm; right: -10mm; margin-top: .6mm; text-align: center; font-size: 3.6mm; }
-  .cert .c-sign-zh { font-family: "Ma Shan Zheng", "KaiTi", "STKaiti", "Microsoft YaHei", serif; font-size: 7.5mm; }
+  .cert .c-sign-label { margin-top: 1mm; font-size: 5mm; }
 
   /* Área de impressão: fora da tela, mas com layout real para medir textos */
   #print-area { position: fixed; left: -10000px; top: 0; }
@@ -162,6 +165,10 @@
 <header class="topbar">
   <h1>Certificados · <span>Academia Panda</span></h1>
   <div class="actions">
+    <select id="t-nomeModo" title="Nome no certificado" style="width:auto">
+      <option value="nomes">Com os nomes dos alunos</option>
+      <option value="branco">Nome em branco (______)</option>
+    </select>
     <button id="btn-print-one">Imprimir este</button>
     <button id="btn-print-all" class="primary">Imprimir todos / Salvar PDF</button>
   </div>
@@ -226,9 +233,8 @@
           <code>{qualificado}</code> → qualificado / qualificada, <code>{data}</code></p>
         <div class="row">
           <label><span>Rótulo da data</span><input type="text" id="t-rotuloData"></label>
-          <label><span>Rótulo da assinatura</span><input type="text" id="t-rotuloAssinatura"></label>
+          <label><span>Texto abaixo da assinatura</span><input type="text" id="t-rotuloAssinatura"></label>
         </div>
-        <label><span>Nome do Grão-Mestre (abaixo da linha)</span><input type="text" id="t-mestre"></label>
         <label><span>Imagem da assinatura (PNG com fundo transparente, opcional)</span></label>
         <div class="sig-preview">
           <img id="sig-thumb" alt="" hidden>
@@ -263,9 +269,8 @@
     <div class="c-zh"></div>
     <div class="c-date"></div>
     <div class="c-sign">
+      <span class="c-sign-line"><img class="c-sign-img" alt=""></span>
       <span class="c-sign-label"></span>
-      <span class="c-sign-line"><img class="c-sign-img" alt=""><span class="c-sign-name"></span></span>
-      <span class="c-sign-zh">签名</span>
     </div>
   </div>
 </template>
@@ -277,8 +282,8 @@ const DEFAULT_TPL = {
   fonte: 'cinzel',
   texto: 'A Academia Panda certifica que {o aluno} {nome} completou com distinção o programa de treinamento e está {qualificado} para a graduação de {graduacao}.',
   rotuloData: 'Data de Emissão:',
-  rotuloAssinatura: 'Assinatura do Grão-Mestre:',
-  mestre: '',
+  rotuloAssinatura: 'Assinatura do professor',
+  nomeModo: 'nomes',
   assinatura: ''
 };
 
@@ -314,6 +319,9 @@ state = {
   students: store.load('panda.students', null),
   selected: null
 };
+// modelos salvos antes da troca do rótulo da assinatura
+if (state.tpl.rotuloAssinatura === 'Assinatura do Grão-Mestre:') state.tpl.rotuloAssinatura = DEFAULT_TPL.rotuloAssinatura;
+delete state.tpl.mestre;
 if (!Array.isArray(state.students) || !state.students.length) {
   state.students = [newStudent({ nome: 'João da Silva', graduacao: 'Faixa Azul', data: today() })];
 }
@@ -352,7 +360,8 @@ function bodyHtml(s) {
     'a aluna': fem ? 'a Aluna' : 'o Aluno',
     'qualificado': fem ? 'qualificada' : 'qualificado',
     'qualificada': fem ? 'qualificada' : 'qualificado',
-    'nome': `<span class="campo">${esc(s.nome || '[Nome do Aluno]')}</span>`,
+    'nome': state.tpl.nomeModo === 'branco' ? '<span class="campo-branco"></span>'
+      : `<span class="campo">${esc(s.nome || '[Nome do Aluno]')}</span>`,
     'graduacao': `<span class="campo">${esc(s.graduacao || '[Graduação]')}</span>`,
     'data': esc(formatDate(s.data))
   };
@@ -376,7 +385,6 @@ function buildCert(s) {
   el.querySelector('.c-zh').textContent = s.graduacaoZh || autoZh(s.graduacao);
   el.querySelector('.c-date').textContent = `${t.rotuloData} ${formatDate(s.data)}`.trim();
   el.querySelector('.c-sign-label').textContent = t.rotuloAssinatura;
-  el.querySelector('.c-sign-name').textContent = t.mestre;
   const sig = el.querySelector('.c-sign-img');
   if (t.assinatura) sig.src = t.assinatura; else sig.removeAttribute('src');
   return el;
@@ -567,7 +575,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
 });
 
 // ---------- modelo ----------
-const tplFields = ['titulo', 'subtitulo', 'fonte', 'texto', 'rotuloData', 'rotuloAssinatura', 'mestre'];
+const tplFields = ['titulo', 'subtitulo', 'fonte', 'texto', 'rotuloData', 'rotuloAssinatura', 'nomeModo'];
 const sigThumb = document.getElementById('sig-thumb');
 const sigRemove = document.getElementById('btn-sig-remove');
 
@@ -595,13 +603,19 @@ document.getElementById('t-assinatura').addEventListener('change', e => {
 sigRemove.addEventListener('click', () => { state.tpl.assinatura = ''; saveTpl(); fillTpl(); renderPreview(); });
 
 document.getElementById('btn-tpl-reset').addEventListener('click', () => {
-  state.tpl = { ...DEFAULT_TPL, mestre: state.tpl.mestre, assinatura: state.tpl.assinatura };
+  state.tpl = { ...DEFAULT_TPL, nomeModo: state.tpl.nomeModo, assinatura: state.tpl.assinatura };
   saveTpl(); fillTpl(); renderPreview();
 });
 
 // ---------- impressão ----------
 document.getElementById('btn-print-one').addEventListener('click', () => printStudents([current()]));
-document.getElementById('btn-print-all').addEventListener('click', () => printStudents(state.students.filter(s => s.nome)));
+document.getElementById('btn-print-all').addEventListener('click', () => {
+  // em branco: imprime um certificado por linha da lista, mesmo sem nome
+  const list = state.tpl.nomeModo === 'branco'
+    ? state.students.filter(s => s.nome || s.graduacao)
+    : state.students.filter(s => s.nome);
+  printStudents(list.length ? list : [current()]);
+});
 
 // ---------- início ----------
 document.getElementById('faixas').innerHTML =
