@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Certificados · Academia Panda</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+  :root {
+    --bg: #f4f1ec;
+    --panel: #ffffff;
+    --line: #e2dcd2;
+    --text: #2b2622;
+    --muted: #7a7067;
+    --accent: #b3261e;
+    --accent-dark: #8e1c16;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ---------- App UI ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 10px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  .topbar h1 span { color: var(--accent); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  button, .btn {
+    font: inherit; cursor: pointer;
+    padding: 7px 12px; border-radius: 6px;
+    border: 1px solid var(--line); background: #fff; color: var(--text);
+  }
+  button:hover, .btn:hover { border-color: #c9bfb2; background: #faf8f5; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-dark); }
+  button.small { padding: 4px 9px; font-size: 13px; }
+  button.danger { color: var(--accent); }
+
+  .layout {
+    display: grid; grid-template-columns: 390px 1fr; gap: 20px;
+    padding: 20px; align-items: start;
+  }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { display: flex; flex-direction: column; gap: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .card h2 {
+    margin: 0 0 10px; font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  label { display: block; margin-bottom: 10px; }
+  label > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 3px; }
+  input[type=text], input[type=date], select, textarea {
+    width: 100%; font: inherit; color: var(--text);
+    padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #e8b4ae; border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .help { font-size: 12px; color: var(--muted); margin: -4px 0 10px; }
+  .help code { background: #f2ede6; padding: 0 4px; border-radius: 3px; }
+
+  .student-list { list-style: none; margin: 0 0 10px; padding: 0; max-height: 320px; overflow: auto; }
+  .student-list li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 6px; cursor: pointer;
+  }
+  .student-list li:hover { background: #faf6f1; }
+  .student-list li.active { background: #fbeceb; }
+  .student-list .n { color: var(--muted); font-size: 12px; width: 20px; text-align: right; }
+  .student-list .info { flex: 1; min-width: 0; }
+  .student-list .info b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .student-list .info small { color: var(--muted); }
+  .student-list .del { border: 0; background: none; color: var(--muted); font-size: 18px; padding: 0 6px; line-height: 1; }
+  .student-list .del:hover { color: var(--accent); }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  details summary { cursor: pointer; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  details[open] summary { margin-bottom: 12px; }
+
+  .sig-preview { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .sig-preview img { max-height: 40px; max-width: 160px; border: 1px dashed var(--line); border-radius: 4px; background: #fff; }
+
+  .preview-col { position: sticky; top: 72px; }
+  .preview-stage {
+    position: relative; width: 100%; aspect-ratio: 297 / 210; overflow: hidden;
+    box-shadow: 0 6px 24px rgba(60, 40, 20, .18); border-radius: 4px; background: #efe9de;
+  }
+  .preview-stage .cert { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  .tips { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .tips b { color: var(--text); }
+
+  /* ---------- Certificado (medidas reais em mm, A4 paisagem) ---------- */
+  .cert {
+    position: relative; width: 297mm; height: 210mm; overflow: hidden;
+    background: #f1ede4; color: #1d1915;
+    font-family: "Courgette", "Segoe Script", cursive;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cert-bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .cert .c-title {
+    position: absolute; top: 77mm; left: 40mm; right: 40mm;
+    text-align: center; white-space: nowrap; line-height: 1.25; font-size: 11mm;
+  }
+  .cert .c-title.f-cinzel { font-family: "Cinzel Decorative", serif; font-weight: 700; }
+  .cert .c-title.f-berkshire { font-family: "Berkshire Swash", cursive; }
+  .cert .c-title.f-courgette { font-family: "Courgette", cursive; }
+  .cert .c-sub { position: absolute; top: 93.5mm; left: 40mm; right: 40mm; text-align: center; font-size: 8.4mm; line-height: 1.25; }
+  .cert .c-body {
+    position: absolute; top: 109.5mm; left: 58mm; right: 58mm; height: 37mm;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cert .c-body p { margin: 0; text-align: center; font-size: 6.6mm; line-height: 1.55; }
+  .cert .campo { font-size: 1.1em; }
+  .cert .c-zh {
+    position: absolute; top: 147mm; left: 58mm; right: 58mm; text-align: center;
+    font-family: "Ma Shan Zheng", "KaiTi", "STKaiti", "Microsoft YaHei", serif;
+    font-size: 6mm; letter-spacing: .8mm; color: #9a1f18;
+  }
+  .cert .c-date { position: absolute; top: 155.5mm; left: 62mm; right: 40mm; text-align: center; font-size: 6.4mm; }
+  .cert .c-sign {
+    position: absolute; top: 166.5mm; left: 62mm; right: 36mm;
+    display: flex; justify-content: center; align-items: flex-end; gap: 3mm;
+    font-size: 6.1mm; white-space: nowrap;
+  }
+  .cert .c-sign-line { position: relative; display: inline-block; width: 64mm; height: 10mm; border-bottom: .35mm solid #2a2420; }
+  .cert .c-sign-img { position: absolute; left: 50%; bottom: .6mm; transform: translateX(-50%); max-height: 13mm; max-width: 62mm; }
+  .cert .c-sign-img:not([src]), .cert .c-sign-img[src=""] { display: none; }
+  .cert .c-sign-name { position: absolute; top: 100%; left: -10mm; right: -10mm; margin-top: .6mm; text-align: center; font-size: 3.6mm; }
+  .cert .c-sign-zh { font-family: "Ma Shan Zheng", "KaiTi", "STKaiti", "Microsoft YaHei", serif; font-size: 7.5mm; }
+
+  /* Área de impressão: fora da tela, mas com layout real para medir textos */
+  #print-area { position: fixed; left: -10000px; top: 0; }
+
+  @page { size: A4 landscape; margin: 0; }
+  @media print {
+    html, body { background: none; min-height: 0; }
+    body > *:not(#print-area) { display: none !important; }
+    #print-area { position: static; }
+    #print-area .cert { break-after: page; page-break-after: always; }
+    #print-area .cert:last-child { break-after: auto; page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>Certificados · <span>Academia Panda</span></h1>
+  <div class="actions">
+    <button id="btn-print-one">Imprimir este</button>
+    <button id="btn-print-all" class="primary">Imprimir todos / Salvar PDF</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="panel">
+
+    <div class="card" id="form-card">
+      <h2>Aluno selecionado</h2>
+      <label><span>Nome do aluno</span><input type="text" id="f-nome" autocomplete="off"></label>
+      <div class="row">
+        <label><span>Tratamento</span>
+          <select id="f-genero">
+            <option value="M">o Aluno (qualificado)</option>
+            <option value="F">a Aluna (qualificada)</option>
+          </select>
+        </label>
+        <label><span>Data de emissão</span><input type="date" id="f-data"></label>
+      </div>
+      <label><span>Graduação</span><input type="text" id="f-grad" list="faixas" autocomplete="off"></label>
+      <label><span>Graduação em chinês (opcional)</span><input type="text" id="f-zh" autocomplete="off"></label>
+      <p class="help">Deixe em branco para preencher automaticamente pela cor da faixa (ex.: Azul → 蓝带).</p>
+    </div>
+
+    <div class="card">
+      <h2>Alunos <span id="count"></span></h2>
+      <ul class="student-list" id="list"></ul>
+      <div class="btn-row">
+        <button class="small" id="btn-add">+ Novo aluno</button>
+        <button class="small" id="btn-import">Importar lista</button>
+        <button class="small" id="btn-export">Exportar CSV</button>
+        <button class="small danger" id="btn-clear">Limpar lista</button>
+      </div>
+      <div id="import-box" hidden style="margin-top:12px">
+        <p class="help" style="margin:0 0 6px">Cole uma linha por aluno (pode copiar do Excel):<br>
+          <code>Nome; Graduação; Data</code> ou <code>Nome; M/F; Graduação; Data</code></p>
+        <textarea id="import-text" placeholder="João da Silva; Faixa Azul; 20/10/2026&#10;Maria Souza; F; Faixa Verde; 20/10/2026"></textarea>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="small primary" id="btn-import-ok">Adicionar à lista</button>
+          <label class="btn small" style="margin:0">Abrir arquivo CSV…<input type="file" id="import-file" accept=".csv,.txt" hidden></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <details id="tpl-details">
+        <summary>Modelo do certificado</summary>
+        <label><span>Título</span><input type="text" id="t-titulo"></label>
+        <div class="row">
+          <label><span>Subtítulo</span><input type="text" id="t-subtitulo"></label>
+          <label><span>Fonte do título</span>
+            <select id="t-fonte">
+              <option value="cinzel">Clássica</option>
+              <option value="berkshire">Decorativa</option>
+              <option value="courgette">Manuscrita</option>
+            </select>
+          </label>
+        </div>
+        <label><span>Texto</span><textarea id="t-texto" rows="5"></textarea></label>
+        <p class="help">Campos: <code>{nome}</code> <code>{graduacao}</code> <code>{o aluno}</code> → o Aluno / a Aluna,
+          <code>{qualificado}</code> → qualificado / qualificada, <code>{data}</code></p>
+        <div class="row">
+          <label><span>Rótulo da data</span><input type="text" id="t-rotuloData"></label>
+          <label><span>Rótulo da assinatura</span><input type="text" id="t-rotuloAssinatura"></label>
+        </div>
+        <label><span>Nome do Grão-Mestre (abaixo da linha)</span><input type="text" id="t-mestre"></label>
+        <label><span>Imagem da assinatura (PNG com fundo transparente, opcional)</span></label>
+        <div class="sig-preview">
+          <img id="sig-thumb" alt="" hidden>
+          <label class="btn small" style="margin:0">Escolher imagem…<input type="file" id="t-assinatura" accept="image/*" hidden></label>
+          <button class="small danger" id="btn-sig-remove" hidden>Remover</button>
+        </div>
+        <button class="small" id="btn-tpl-reset">Restaurar textos padrão</button>
+      </details>
+    </div>
+  </section>
+
+  <section class="preview-col">
+    <div class="preview-stage" id="stage"></div>
+    <div class="tips">
+      <b>Para gerar o PDF:</b> clique em <b>Imprimir todos / Salvar PDF</b>, escolha o destino
+      <b>“Salvar como PDF”</b> (ou sua impressora), papel <b>A4</b>, orientação <b>Paisagem</b> e margens <b>Nenhuma</b>.
+      Cada aluno vira uma página. Os dados ficam salvos neste navegador.
+    </div>
+  </section>
+</main>
+
+<div id="print-area"></div>
+
+<datalist id="faixas"></datalist>
+
+<template id="cert-tpl">
+  <div class="cert">
+    <img class="cert-bg" src="assets/fundo.svg" alt="">
+    <div class="c-title"></div>
+    <div class="c-sub"></div>
+    <div class="c-body"><p></p></div>
+    <div class="c-zh"></div>
+    <div class="c-date"></div>
+    <div class="c-sign">
+      <span class="c-sign-label"></span>
+      <span class="c-sign-line"><img class="c-sign-img" alt=""><span class="c-sign-name"></span></span>
+      <span class="c-sign-zh">签名</span>
+    </div>
+  </div>
+</template>
+
+<script>
+const DEFAULT_TPL = {
+  titulo: 'Certificado de Graduação em Sanda',
+  subtitulo: '(San Shou)',
+  fonte: 'cinzel',
+  texto: 'A Academia Panda certifica que {o aluno} {nome} completou com distinção o programa de treinamento e está {qualificado} para a graduação de {graduacao}.',
+  rotuloData: 'Data de Emissão:',
+  rotuloAssinatura: 'Assinatura do Grão-Mestre:',
+  mestre: '',
+  assinatura: ''
+};
+
+const FAIXAS = [
+  ['branca', '白带'], ['cinza', '灰带'], ['amarela', '黄带'], ['laranja', '橙带'], ['verde', '绿带'],
+  ['azul', '蓝带'], ['roxa', '紫带'], ['vermelha', '红带'], ['marrom', '棕带'], ['preta', '黑带']
+];
+
+// ---------- armazenamento local ----------
+const store = {
+  load(key, fallback) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
+  },
+  save(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+  }
+};
+
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const uid = () => Math.random().toString(36).slice(2, 10);
+const newStudent = (data = {}) => ({ id: uid(), nome: '', genero: 'M', graduacao: '', graduacaoZh: '', data: lastDate(), ...data });
+function lastDate() {
+  const list = state && Array.isArray(state.students) ? state.students : [];
+  return (list.length && list[list.length - 1].data) || today();
+}
+
+let state = null;
+state = {
+  tpl: { ...DEFAULT_TPL, ...store.load('panda.tpl', {}) },
+  students: store.load('panda.students', null),
+  selected: null
+};
+if (!Array.isArray(state.students) || !state.students.length) {
+  state.students = [newStudent({ nome: 'João da Silva', graduacao: 'Faixa Azul', data: today() })];
+}
+state.selected = state.students[0].id;
+
+function saveStudents() { store.save('panda.students', state.students); }
+function saveTpl() {
+  if (!store.save('panda.tpl', state.tpl)) alert('Não foi possível salvar o modelo neste navegador (a imagem da assinatura pode ser grande demais).');
+}
+const current = () => state.students.find(s => s.id === state.selected) || state.students[0];
+
+// ---------- utilidades de texto ----------
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const plain = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function formatDate(iso) {
+  if (!iso) return '[Data]';
+  const d = new Date(iso + 'T12:00:00');
+  return isNaN(d) ? iso : d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function autoZh(grad) {
+  const g = plain(grad);
+  let best = null;
+  for (const [cor, zh] of FAIXAS) {
+    const i = g.indexOf(cor);
+    if (i >= 0 && (best === null || i < best.i)) best = { i, zh };
+  }
+  return best ? best.zh : '';
+}
+
+function bodyHtml(s) {
+  const fem = s.genero === 'F';
+  const map = {
+    'o aluno': fem ? 'a Aluna' : 'o Aluno',
+    'a aluna': fem ? 'a Aluna' : 'o Aluno',
+    'qualificado': fem ? 'qualificada' : 'qualificado',
+    'qualificada': fem ? 'qualificada' : 'qualificado',
+    'nome': `<span class="campo">${esc(s.nome || '[Nome do Aluno]')}</span>`,
+    'graduacao': `<span class="campo">${esc(s.graduacao || '[Graduação]')}</span>`,
+    'data': esc(formatDate(s.data))
+  };
+  return esc(state.tpl.texto).replace(/\{([^}]+)\}/g, (m, k) => {
+    const key = plain(k).trim();
+    return key in map ? map[key] : m;
+  });
+}
+
+// ---------- montagem do certificado ----------
+const certTpl = document.getElementById('cert-tpl');
+
+function buildCert(s) {
+  const t = state.tpl;
+  const el = certTpl.content.firstElementChild.cloneNode(true);
+  const title = el.querySelector('.c-title');
+  title.textContent = t.titulo;
+  title.classList.add('f-' + t.fonte);
+  el.querySelector('.c-sub').textContent = t.subtitulo;
+  el.querySelector('.c-body p').innerHTML = bodyHtml(s);
+  el.querySelector('.c-zh').textContent = s.graduacaoZh || autoZh(s.graduacao);
+  el.querySelector('.c-date').textContent = `${t.rotuloData} ${formatDate(s.data)}`.trim();
+  el.querySelector('.c-sign-label').textContent = t.rotuloAssinatura;
+  el.querySelector('.c-sign-name').textContent = t.mestre;
+  const sig = el.querySelector('.c-sign-img');
+  if (t.assinatura) sig.src = t.assinatura; else sig.removeAttribute('src');
+  return el;
+}
+
+// Reduz a fonte do título e do texto quando não cabem no espaço
+function fitCert(el) {
+  const title = el.querySelector('.c-title');
+  let fs = 11;
+  title.style.fontSize = fs + 'mm';
+  while (title.scrollWidth > title.clientWidth + 1 && fs > 5) { fs -= 0.25; title.style.fontSize = fs + 'mm'; }
+
+  const box = el.querySelector('.c-body'), p = box.querySelector('p');
+  fs = 6.6;
+  p.style.fontSize = fs + 'mm';
+  while (p.offsetHeight > box.clientHeight + 1 && fs > 3.5) { fs -= 0.1; p.style.fontSize = fs + 'mm'; }
+}
+
+const stage = document.getElementById('stage');
+const printArea = document.getElementById('print-area');
+
+function scalePreview() {
+  const cert = stage.querySelector('.cert');
+  if (cert) cert.style.transform = `scale(${stage.clientWidth / cert.offsetWidth})`;
+}
+new ResizeObserver(scalePreview).observe(stage);
+
+function renderPreview() {
+  const s = current();
+  const el = buildCert(s);
+  stage.replaceChildren(el);
+  fitCert(el);
+  scalePreview();
+  // mantém a área de impressão com o certificado atual (para Ctrl+P)
+  const p = buildCert(s);
+  printArea.replaceChildren(p);
+  fitCert(p);
+}
+
+async function printStudents(list) {
+  if (!list.length) return;
+  printArea.replaceChildren(...list.map(buildCert));
+  await document.fonts.ready;
+  await Promise.all([...printArea.querySelectorAll('img[src]')].map(img => img.complete ? null :
+    new Promise(r => { img.onload = img.onerror = r; setTimeout(r, 3000); })));
+  printArea.querySelectorAll('.cert').forEach(fitCert);
+  window.print();
+}
+window.addEventListener('afterprint', renderPreview);
+
+// ---------- formulário do aluno ----------
+const f = {
+  nome: document.getElementById('f-nome'),
+  genero: document.getElementById('f-genero'),
+  data: document.getElementById('f-data'),
+  graduacao: document.getElementById('f-grad'),
+  graduacaoZh: document.getElementById('f-zh')
+};
+
+function fillForm() {
+  const s = current();
+  for (const k in f) f[k].value = s[k] || '';
+  f.genero.value = s.genero || 'M';
+  f.graduacaoZh.placeholder = autoZh(s.graduacao) || 'ex.: 蓝带';
+}
+
+for (const k in f) {
+  f[k].addEventListener('input', () => {
+    const s = current();
+    s[k] = f[k].value;
+    if (k === 'graduacao') f.graduacaoZh.placeholder = autoZh(s.graduacao) || 'ex.: 蓝带';
+    saveStudents();
+    renderList();
+    renderPreview();
+  });
+}
+
+// ---------- lista de alunos ----------
+const listEl = document.getElementById('list');
+
+function renderList() {
+  document.getElementById('count').textContent = `(${state.students.length})`;
+  listEl.replaceChildren(...state.students.map((s, i) => {
+    const li = document.createElement('li');
+    li.className = s.id === state.selected ? 'active' : '';
+    li.innerHTML = `<span class="n">${i + 1}</span><span class="info"><b></b><small></small></span>
+      <button class="del" title="Remover">×</button>`;
+    li.querySelector('b').textContent = s.nome || '(sem nome)';
+    li.querySelector('small').textContent = [s.graduacao || 'sem graduação', formatDate(s.data)].join(' · ');
+    li.addEventListener('click', () => select(s.id));
+    li.querySelector('.del').addEventListener('click', e => { e.stopPropagation(); removeStudent(s.id); });
+    return li;
+  }));
+}
+
+function select(id) {
+  state.selected = id;
+  fillForm(); renderList(); renderPreview();
+}
+
+function removeStudent(id) {
+  const i = state.students.findIndex(s => s.id === id);
+  state.students.splice(i, 1);
+  if (!state.students.length) state.students.push(newStudent());
+  if (state.selected === id) state.selected = state.students[Math.max(0, i - 1)].id;
+  saveStudents(); select(state.selected);
+}
+
+document.getElementById('btn-add').addEventListener('click', () => {
+  const prev = current();
+  const s = newStudent({ graduacao: prev.graduacao, data: prev.data });
+  state.students.push(s);
+  saveStudents(); select(s.id);
+  f.nome.focus();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Remover todos os alunos da lista?')) return;
+  state.students = [newStudent({ data: today() })];
+  saveStudents(); select(state.students[0].id);
+});
+
+// ---------- importar / exportar ----------
+const importBox = document.getElementById('import-box');
+document.getElementById('btn-import').addEventListener('click', () => { importBox.hidden = !importBox.hidden; });
+
+function parseDate(v) {
+  v = (v || '').trim();
+  let m = v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? v : '';
+}
+
+function parseGenero(v) {
+  const g = plain(v).trim();
+  if (['f', 'fem', 'feminino', 'feminina', 'aluna', 'a'].includes(g)) return 'F';
+  if (['m', 'masc', 'masculino', 'aluno', 'o'].includes(g)) return 'M';
+  return null;
+}
+
+function importText(text) {
+  const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const added = [];
+  for (const line of rows) {
+    const sep = line.includes('\t') ? '\t' : line.includes(';') ? ';' : ',';
+    const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+    if (plain(cols[0]) === 'nome') continue; // cabeçalho
+    const s = newStudent({ nome: cols[0] });
+    let rest = cols.slice(1);
+    const g = parseGenero(rest[0]);
+    if (g) { s.genero = g; rest = rest.slice(1); }
+    for (const c of rest) {
+      const d = parseDate(c);
+      if (d) s.data = d;
+      else if (/[㐀-鿿]/.test(c)) s.graduacaoZh = c;
+      else if (c && !s.graduacao) s.graduacao = c;
+    }
+    if (s.nome) added.push(s);
+  }
+  if (!added.length) { alert('Nenhum aluno encontrado no texto.'); return; }
+  // descarta o aluno vazio inicial, se houver
+  state.students = state.students.filter(s => s.nome || s.graduacao);
+  state.students.push(...added);
+  saveStudents(); select(added[0].id);
+  importBox.hidden = true;
+  document.getElementById('import-text').value = '';
+}
+
+document.getElementById('btn-import-ok').addEventListener('click', () => importText(document.getElementById('import-text').value));
+document.getElementById('import-file').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (file) importText(await file.text());
+  e.target.value = '';
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const q = v => /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const lines = ['Nome;Gênero;Graduação;Graduação (chinês);Data',
+    ...state.students.map(s => [s.nome, s.genero, s.graduacao, s.graduacaoZh || autoZh(s.graduacao),
+      s.data ? s.data.split('-').reverse().join('/') : ''].map(v => q(v || '')).join(';'))];
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'alunos-certificados.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+// ---------- modelo ----------
+const tplFields = ['titulo', 'subtitulo', 'fonte', 'texto', 'rotuloData', 'rotuloAssinatura', 'mestre'];
+const sigThumb = document.getElementById('sig-thumb');
+const sigRemove = document.getElementById('btn-sig-remove');
+
+function fillTpl() {
+  for (const k of tplFields) document.getElementById('t-' + k).value = state.tpl[k];
+  sigThumb.hidden = sigRemove.hidden = !state.tpl.assinatura;
+  if (state.tpl.assinatura) sigThumb.src = state.tpl.assinatura;
+}
+
+for (const k of tplFields) {
+  document.getElementById('t-' + k).addEventListener('input', e => {
+    state.tpl[k] = e.target.value;
+    saveTpl(); renderPreview();
+  });
+}
+
+document.getElementById('t-assinatura').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { state.tpl.assinatura = reader.result; saveTpl(); fillTpl(); renderPreview(); };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+sigRemove.addEventListener('click', () => { state.tpl.assinatura = ''; saveTpl(); fillTpl(); renderPreview(); });
+
+document.getElementById('btn-tpl-reset').addEventListener('click', () => {
+  state.tpl = { ...DEFAULT_TPL, mestre: state.tpl.mestre, assinatura: state.tpl.assinatura };
+  saveTpl(); fillTpl(); renderPreview();
+});
+
+// ---------- impressão ----------
+document.getElementById('btn-print-one').addEventListener('click', () => printStudents([current()]));
+document.getElementById('btn-print-all').addEventListener('click', () => printStudents(state.students.filter(s => s.nome)));
+
+// ---------- início ----------
+document.getElementById('faixas').innerHTML =
+  FAIXAS.map(([cor]) => `<option value="Faixa ${cor[0].toUpperCase() + cor.slice(1)}">`).join('');
+fillForm(); fillTpl(); renderList(); renderPreview();
+document.fonts.ready.then(renderPreview);
+</script>
+</body>
+</html>
